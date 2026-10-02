@@ -1,0 +1,97 @@
+/* Premium site-wide visual layer */
+
+:root {
+  --site-glass: rgba(255,255,255,.045);
+  --site-glass-strong: rgba(255,255,255,.07);
+  --site-glass-border: rgba(255,255,255,.10);
+  --site-shadow: 0 24px 80px rgba(0,0,0,.24);
+  --site-radius: 28px;
+}
+
+html { background: #05070d; }
+body {
+  margin: 0;
+  background: #05070d;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
+button { touch-action: manipulation; }
+
+.site-shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% -10%, color-mix(in srgb, var(--cyan-500) 10%, transparent), transparent 38%),
+    var(--theme-bg, #070b19);
+}
+
+.site-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -4;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.018), transparent 22%, rgba(0,0,0,.14));
+}
+
+.site-ambient { position: fixed; inset: 0; z-index: -3; pointer-events: none; overflow: hidden; }
+.site-grid {
+  position: absolute;
+  inset: 0;
+  opacity: .18;
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, black, transparent 70%);
+}
+.site-orb { position: absolute; width: 34rem; height: 34rem; border-radius: 999px; filter: blur(90px); opacity: .10; background: var(--cyan-500); animation: site-drift 18s ease-in-out infinite alternate; }
+.site-orb-one { top: 4%; left: -15rem; }
+.site-orb-two { top: 42%; right: -18rem; animation-delay: -7s; }
+@keyframes site-drift { to { transform: translate3d(7rem, 4rem, 0) scale(1.08); } }
+
+/* Give common cards a more tactile premium surface without changing their content. */
+.site-shell section > div[class*="rounded"],
+.site-shell article[class*="rounded"],
+.site-shell .group[class*="rounded"] {
+  transition: border-color .3s ease, box-shadow .3s ease, transform .3s ease, background-color .3s ease;
+}
+
+/* Floating glass surfaces used by navigation and interactive controls. */
+.site-shell header[class*="fixed"],
+.site-shell nav[class*="fixed"] {
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  background: rgba(7,11,25,.68) !important;
+  border-color: rgba(255,255,255,.09) !important;
+  box-shadow: 0 14px 50px rgba(0,0,0,.18);
+}
+
+/* Scrollbar */
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.14) transparent; }
+*::-webkit-scrollbar { width: 7px; height: 7px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(255,255,255,.13); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); background-clip: padding-box; }
+
+/* Better mobile viewport behavior */
+@supports (height: 100dvh) {
+  .site-shell { min-height: 100dvh; }
+}
+
+@media (max-width: 640px) {
+  .site-shell { background: var(--theme-bg, #070b19); }
+  .site-grid { background-size: 42px 42px; opacity: .10; }
+  .site-orb { width: 22rem; height: 22rem; filter: blur(75px); opacity: .08; }
+  section[id] { scroll-margin-top: 88px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-orb { animation: none; }
+  * { scroll-behavior: auto !important; }
+}
+
+/* Selection feels more deliberate across the portfolio. */
+::selection { background: color-mix(in srgb, var(--cyan-500) 35%, transparent); color: white; }
