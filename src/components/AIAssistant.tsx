@@ -1,267 +1,234 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, X, Send, User, BrainCircuit, ArrowUpRight } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { ArrowUpRight, BrainCircuit, MessageSquare, RotateCcw, Send, Sparkles, User, X } from 'lucide-react';
 import { ChatMessage } from '../types';
 
 const quickPrompts = [
-  "What is Vortex labs?",
-  "What are Grok's core skills?",
-  "Is Grok available for freelance?",
-  "Tell me about the AI Study Assistant"
+  { label: 'About Grok', prompt: 'Give me a quick introduction to Grok.' },
+  { label: 'Projects', prompt: 'What are Grok\'s main projects and what do they do?' },
+  { label: 'Tech stack', prompt: 'What technologies does Grok work with?' },
+  { label: 'AI work', prompt: 'Tell me about Grok\'s AI work, especially the AI Study Assistant.' },
+  { label: 'Vortex Labs', prompt: 'What is Vortex Labs?' },
+  { label: 'Collaboration', prompt: 'How can someone collaborate with Grok or Vortex Labs?' },
 ];
+
+const makeTimestamp = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+const initialMessage: ChatMessage = {
+  id: 'init',
+  role: 'model',
+  text: "Hey 👋 I'm Grok's AI Twin — a digital representation of the developer behind this portfolio. Ask me about Grok, his projects, technology, AI work, or Vortex Labs.",
+  timestamp: makeTimestamp(),
+};
 
 export default function AIAssistant() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'init',
-      role: 'model',
-      text: "Hi there! I am Grok's AI portfolio assistant. Ask me about Vortex Labs, Grok's projects, skills, or certifications.",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([initialMessage]);
   const [inputText, setInputText] = useState('');
   const [generating, setGenerating] = useState(false);
   const [hasNewMessage, setHasNewMessage] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-
+  const [errorState, setErrorState] = useState(false);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto scroll to bottom
   useEffect(() => {
-    if (endOfMessagesRef.current) {
-      endOfMessagesRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, generating]);
 
-  // Alert visitor of initial message after short delay
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setHasNewMessage(true);
-    }, 4000);
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(() => setHasNewMessage(true), 4500);
+    return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    if (isOpen) window.setTimeout(() => inputRef.current?.focus(), 250);
+  }, [isOpen]);
+
   const handleSendMessage = async (textToSend: string) => {
-    if (!textToSend.trim() || generating) return;
+    const cleanText = textToSend.trim();
+    if (!cleanText || generating) return;
 
     const userMsg: ChatMessage = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-user`,
       role: 'user',
-      text: textToSend,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      text: cleanText,
+      timestamp: makeTimestamp(),
     };
+
+    const historyPayload = messages
+      .filter((m) => m.id !== 'init')
+      .slice(-10)
+      .map((m) => ({ role: m.role, text: m.text }));
 
     setMessages((prev) => [...prev, userMsg]);
     setInputText('');
     setGenerating(true);
+    setErrorState(false);
     setHasNewMessage(false);
 
     try {
-      // Package conversation history (up to last 6 messages) for chat model compatibility
-      const historyPayload = messages
-        .filter(m => m.id !== 'init')
-        .slice(-6)
-        .map(m => ({ role: m.role, text: m.text }));
-
       const res = await fetch('/api/assistant', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: textToSend,
-          history: historyPayload
-        })
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ message: cleanText, history: historyPayload }),
       });
 
-      if (!res.ok) throw new Error('Network response not ok.');
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      const modelMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        text: data.text || "I was unable to compile a response, but Grok remains highly motivated and ready to code!",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
+      if (!res.ok) {
+        throw new Error(data?.error || `Request failed with status ${res.status}.`);
+      }
 
-      setMessages((prev) => [...prev, modelMsg]);
+      if (typeof data.text !== 'string' || !data.text.trim()) {
+        throw new Error('The AI Twin returned an empty response.');
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-model`,
+          role: 'model',
+          text: data.text.trim(),
+          timestamp: makeTimestamp(),
+        },
+      ]);
     } catch (err) {
-      console.error(err);
-      const errorMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        text: "My neural relays are temporarily congested! However, feel free to reach Grok directly using the contact form below.",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+      console.error('AI Twin request failed:', err);
+      setErrorState(true);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-error`,
+          role: 'model',
+          text: 'I could not reach the AI service right now. Please check the deployment/API configuration and try again.',
+          timestamp: makeTimestamp(),
+        },
+      ]);
     } finally {
       setGenerating(false);
     }
   };
 
+  const resetChat = () => {
+    setMessages([{ ...initialMessage, id: `init-${Date.now()}`, timestamp: makeTimestamp() }]);
+    setInputText('');
+    setErrorState(false);
+  };
+
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end">
-      
-      {/* Floating launcher bubble with badge notification alert */}
+    <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40 flex flex-col items-end">
       <AnimatePresence>
         {!isOpen && (
-          <motion.div
-            initial={{ scale: 0.85, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.85, opacity: 0 }}
-            className="relative"
-          >
-            <AnimatePresence>
-              {isHovered && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                  className="absolute right-0 bottom-16 w-52 p-3 rounded-xl border border-cyan-500/15 bg-[#0f172a]/95 text-zinc-300 text-xs shadow-xl backdrop-blur-md pointer-events-none mb-2"
-                >
-                  <div className="absolute -bottom-1.5 right-6 w-3 h-3 bg-[#0f172a] border-r border-b border-cyan-500/15 rotate-45" />
-                  <span className="font-semibold text-cyan-400 block mb-0.5">Chat with my AI Twin!</span>
-                  Ask questions about my experience and technical projects.
-                </motion.div>
-              )}
-            </AnimatePresence>
-
+          <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.85, opacity: 0 }}>
             <button
               onClick={() => { setIsOpen(true); setHasNewMessage(false); }}
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
-              className="p-4 rounded-full bg-gradient-to-tr from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-lg shadow-red-500/30 cursor-pointer flex items-center justify-center relative group"
-              title="Chat with Atamba Joel's AI Twin"
+              className="group relative flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-400 via-sky-500 to-blue-600 text-white shadow-xl shadow-cyan-500/25 border border-white/20 hover:scale-105 transition-transform cursor-pointer"
+              title="Open Grok's AI Twin"
+              aria-label="Open Grok's AI Twin"
             >
-              <MessageSquare className="w-6 h-6 group-hover:rotate-6 transition-transform" />
-              {hasNewMessage && (
-                <span className="absolute top-0 right-0 w-3 h-3 bg-sky-400 border-2 border-zinc-950 rounded-full animate-bounce" />
-              )}
+              <BrainCircuit className="w-6 h-6 group-hover:rotate-6 transition-transform" />
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#080d18]" />
+              {hasNewMessage && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-cyan-300 animate-ping" />}
             </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Expanded chat window panel */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 50 }}
+          <motion.section
+            initial={{ opacity: 0, scale: 0.92, y: 35 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 50 }}
-            transition={{ type: "spring", stiffness: 220, damping: 25 }}
-            className="w-80 sm:w-[350px] h-[500px] rounded-2xl border border-white/10 bg-[#0f172a]/95 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden relative"
+            exit={{ opacity: 0, scale: 0.92, y: 35 }}
+            transition={{ type: 'spring', stiffness: 220, damping: 25 }}
+            className="w-[calc(100vw-2rem)] sm:w-[390px] h-[min(620px,calc(100vh-2rem))] rounded-3xl border border-white/10 bg-[#080d18]/95 backdrop-blur-2xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col"
+            aria-label="Grok AI Twin chat"
           >
-            {/* Ambient visual gradient top cap */}
-            <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-sky-500 to-cyan-500" />
+            <div className="h-1 bg-gradient-to-r from-cyan-400 via-sky-500 to-violet-500" />
 
-            {/* Chat header panel */}
-            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/2">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                  <BrainCircuit className="w-4 h-4 text-cyan-400 animate-pulse" />
+            <header className="px-4 py-4 border-b border-white/8 bg-white/[0.025] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative w-10 h-10 rounded-2xl bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-cyan-300" />
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#080d18]" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-white tracking-wide font-sans">Grok's AI Twin</h3>
-                  <div className="flex items-center gap-1 mt-0.5 text-[9px] font-mono text-zinc-500">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <span>PORTFOLIO ASSISTANT ONLINE</span>
-                  </div>
+                  <h3 className="text-sm font-bold text-white">Grok's AI Twin</h3>
+                  <p className="text-[10px] text-zinc-500 mt-0.5">Digital portfolio representation · Online</p>
                 </div>
               </div>
+              <div className="flex items-center gap-1">
+                <button onClick={resetChat} className="p-2 rounded-xl text-zinc-500 hover:text-white hover:bg-white/5 transition-colors" title="New conversation" aria-label="New conversation">
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+                <button onClick={() => setIsOpen(false)} className="p-2 rounded-xl text-zinc-500 hover:text-white hover:bg-white/5 transition-colors" title="Close" aria-label="Close">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </header>
 
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1 rounded-md text-zinc-500 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
-              >
-                <X className="w-4.5 h-4.5" />
-              </button>
-            </div>
-
-            {/* Message timeline area */}
-            <div className="flex-grow p-4 overflow-y-auto space-y-4 font-sans text-xs scrollbar-thin scrollbar-thumb-zinc-800">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-zinc-800">
               {messages.map((msg) => {
                 const isModel = msg.role === 'model';
                 return (
-                  <div
-                    key={msg.id}
-                    className={`flex items-start gap-2 max-w-[85%] ${isModel ? 'self-start' : 'ml-auto flex-row-reverse'}`}
-                  >
-                    {/* Tiny avatar block */}
-                    <div className={`p-1.5 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
-                      isModel ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
-                    }`}>
-                      {isModel ? <BrainCircuit className="w-3 h-3" /> : <User className="w-3 h-3" />}
+                  <motion.div key={msg.id} initial={{ opacity: 0, y: 7 }} animate={{ opacity: 1, y: 0 }} className={`flex items-start gap-2.5 ${isModel ? '' : 'flex-row-reverse'}`}>
+                    <div className={`w-7 h-7 rounded-xl shrink-0 flex items-center justify-center border ${isModel ? 'bg-cyan-400/10 text-cyan-300 border-cyan-400/15' : 'bg-sky-500/10 text-sky-300 border-sky-500/15'}`}>
+                      {isModel ? <BrainCircuit className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
                     </div>
-
-                    <div className={`p-3 rounded-2xl leading-relaxed font-normal ${
-                      isModel ? 'bg-white/5 text-zinc-300 rounded-tl-none border border-white/2' : 'bg-red-600 text-white rounded-tr-none'
-                    }`}>
-                      <p>{msg.text}</p>
-                      <span className="text-[8px] font-mono opacity-50 block text-right mt-1.5 uppercase">
-                        {msg.timestamp}
-                      </span>
+                    <div className={`max-w-[82%] px-3.5 py-3 rounded-2xl text-[12px] leading-relaxed ${isModel ? 'bg-white/[0.055] text-zinc-300 border border-white/[0.06] rounded-tl-sm' : 'bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-tr-sm'}`}>
+                      <p className="whitespace-pre-wrap">{msg.text}</p>
+                      <span className="block text-[8px] opacity-40 mt-1.5 text-right">{msg.timestamp}</span>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
 
-              {/* Generating loading dot bubble */}
               {generating && (
-                <div className="flex items-start gap-2 max-w-[85%] self-start">
-                  <div className="p-1.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                    <BrainCircuit className="w-3 h-3 animate-spin" />
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-xl bg-cyan-400/10 text-cyan-300 border border-cyan-400/15 flex items-center justify-center">
+                    <BrainCircuit className="w-3.5 h-3.5 animate-pulse" />
                   </div>
-                  <div className="p-3 rounded-2xl rounded-tl-none bg-white/5 text-zinc-500 border border-white/2 flex gap-1 items-center">
-                    <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" />
-                    <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                  <div className="px-3.5 py-3 rounded-2xl rounded-tl-sm bg-white/[0.055] border border-white/[0.06] flex items-center gap-1.5">
+                    <span className="text-[10px] text-zinc-500 mr-1">Thinking</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-bounce" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-bounce [animation-delay:120ms]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-bounce [animation-delay:240ms]" />
                   </div>
                 </div>
               )}
               <div ref={endOfMessagesRef} />
             </div>
 
-            {/* Preconfigured Quick Prompt shortcuts */}
-            <div className="px-4 py-2 border-t border-white/5 flex gap-1.5 overflow-x-auto whitespace-nowrap bg-white/1 scrollbar-none scroll-smooth">
-              {quickPrompts.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => handleSendMessage(p)}
-                  disabled={generating}
-                  className="px-2.5 py-1.5 border border-white/5 hover:border-cyan-500/30 bg-[#131e35] hover:bg-cyan-950/10 text-[10px] font-semibold text-zinc-400 hover:text-cyan-300 rounded-lg transition-all flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-50"
-                >
-                  <span>{p}</span>
-                  <ArrowUpRight className="w-2.5 h-2.5" />
-                </button>
-              ))}
+            <div className="px-4 py-2.5 border-t border-white/8 bg-white/[0.02]">
+              <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+                {quickPrompts.map((item) => (
+                  <button key={item.label} onClick={() => handleSendMessage(item.prompt)} disabled={generating} className="shrink-0 px-3 py-1.5 rounded-xl border border-white/8 bg-white/[0.035] hover:bg-cyan-400/10 hover:border-cyan-400/20 text-[10px] text-zinc-400 hover:text-cyan-200 transition-colors disabled:opacity-40 cursor-pointer">
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Input submission box area */}
-            <form
-              onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputText); }}
-              className="p-4 border-t border-white/5 bg-[#0f172a] flex items-center gap-2"
-            >
+            {errorState && <div className="px-4 py-1.5 text-[9px] text-amber-300/80 bg-amber-400/5 border-t border-amber-400/10">The last request failed. You can try sending it again.</div>}
+
+            <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputText); }} className="p-3.5 border-t border-white/8 bg-[#070b14] flex gap-2">
               <input
+                ref={inputRef}
                 type="text"
-                placeholder="Ask my partner a question..."
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 disabled={generating}
-                className="flex-grow bg-[#131e35] border border-white/5 rounded-xl px-3.5 py-2 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-cyan-500/50 transition-colors disabled:opacity-50"
+                placeholder="Ask the AI Twin anything..."
+                className="min-w-0 flex-1 px-3.5 py-3 rounded-2xl bg-white/[0.045] border border-white/8 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-cyan-400/40 focus:bg-white/[0.06] transition-all disabled:opacity-50"
+                maxLength={3000}
               />
-              <button
-                type="submit"
-                disabled={!inputText.trim() || generating}
-                className="p-2 bg-red-600 hover:bg-red-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded-xl transition-colors cursor-pointer flex items-center justify-center shrink-0"
-              >
+              <button type="submit" disabled={!inputText.trim() || generating} className="w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 text-white flex items-center justify-center disabled:opacity-30 hover:scale-105 transition-transform cursor-pointer" title="Send message" aria-label="Send message">
                 <Send className="w-4 h-4" />
               </button>
             </form>
-
-          </motion.div>
+          </motion.section>
         )}
       </AnimatePresence>
-
     </div>
   );
 }
