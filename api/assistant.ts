@@ -1,5 +1,4 @@
 import { GoogleGenAI } from "@google/genai";
-import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const twinKnowledge = `
 You are Grok's AI Twin, the interactive digital representation of the developer behind this portfolio.
@@ -28,7 +27,7 @@ BEHAVIOR:
 
 type ChatItem = { role?: string; text?: string };
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed." });
@@ -41,8 +40,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Message is required." });
     }
 
-    // Support both the documented variable and the common generic name so a
-    // correctly-added Vercel Gemini key does not silently fail because of naming.
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!apiKey) {
       console.error("AI Twin: GEMINI_API_KEY/GOOGLE_API_KEY is missing.");
@@ -89,8 +86,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error: unknown) {
     console.error("AI Twin request failed:", error);
     const message = error instanceof Error ? error.message : "Unknown Gemini error";
-
-    // Do not expose provider internals to visitors.
     return res.status(502).json({
       error: "The AI Twin could not respond right now. Please try again in a moment.",
       ...(process.env.NODE_ENV === "development" ? { debug: message } : {}),
