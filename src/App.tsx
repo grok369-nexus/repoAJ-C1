@@ -16,6 +16,7 @@ import AIAssistant from './components/AIAssistant';
 import BackToTop from './components/BackToTop';
 import ScrollProgressBar from './components/ScrollProgressBar';
 import ScrollReveal from './components/ScrollReveal';
+import './site-polish.css';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
