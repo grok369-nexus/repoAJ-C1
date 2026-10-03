@@ -27,13 +27,31 @@ type ChatItem = { role?: string; text?: string };
 
 const getModel = () => {
   const configured = (process.env.GEMINI_MODEL || "").trim();
-  // Gemini reports that 2.5 Flash is no longer available to new users.
-  // Automatically migrate that legacy setting so an old Vercel env var
-  // cannot keep the AI Twin broken after deployment.
+
+  // Gemini 2.5 access is restricted for new projects. Prefer the current
+  // stable 3.8 Flash model, but keep a resilient fallback for temporary
+  // capacity spikes.
   if (!configured || configured === "gemini-2.5-flash" || configured === "models/gemini-2.5-flash") {
     return "gemini-3.8-flash";
   }
+
   return configured.replace(/^models\//, "");
+};
+
+const getModelCandidates = () => {
+  const primary = getModel();
+  const candidates = [primary];
+
+  // 3.7 Flash is still supported and gives the AI Twin a graceful path
+  // when 3.8 Flash is temporarily capacity-limited.
+  if (primary === "gemini-3.8-flash") candidates.push("gemini-3.7-flash");
+
+  // Lightweight final fallback for short portfolio conversations.
+  if (!candidates.includes("gemini-3.5-flash-lite")) {
+    candidates.push("gemini-3.5-flash-lite");
+  }
+
+  return candidates;
 };
 const getApiKey = () => process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
@@ -86,42 +104,59 @@ export default async function handler(req: any, res: any) {
       parts: [{ text: message.trim().slice(0, 3000) }],
     });
 
-    const model = getModel();
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+    let response: Response | null = null;
+    let providerData: any = {};
+    let lastStatus = 502;
+    let lastProviderMessage = "Gemini did not return a response.";
+    let usedModel = getModel();
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: twinKnowledge }],
+    for (const model of getModelCandidates()) {
+      usedModel = model;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
         },
-        contents,
-        generationConfig: {
-          temperature: 0.35,
-          maxOutputTokens: 700,
-        },
-      }),
-      signal: AbortSignal.timeout(25000),
-    });
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: twinKnowledge }],
+          },
+          contents,
+          generationConfig: {
+            maxOutputTokens: 700,
+          },
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
 
-    const providerData = await response.json().catch(() => ({}));
+      providerData = await response.json().catch(() => ({}));
 
-    if (!response.ok) {
-      const providerMessage =
+      if (response.ok) break;
+
+      lastStatus = response.status;
+      lastProviderMessage =
         providerData?.error?.message ||
         providerData?.error?.status ||
         `Gemini returned HTTP ${response.status}.`;
 
-      console.error("AI Twin Gemini error:", response.status, providerMessage);
+      // 429/503 are commonly transient capacity/rate-limit responses.
+      // Try the next supported model before surfacing an error to the visitor.
+      if (response.status !== 429 && response.status !== 503) break;
+
+      console.warn("AI Twin model unavailable, trying fallback:", model, response.status);
+    }
+
+    if (!response?.ok) {
+      console.error("AI Twin Gemini error:", lastStatus, lastProviderMessage);
 
       return res.status(502).json({
         error: "Gemini could not process the AI Twin request.",
-        detail: providerMessage,
-        code: `GEMINI_HTTP_${response.status}`,
+        detail: lastProviderMessage,
+        code: `GEMINI_HTTP_${lastStatus}`,
+        model: usedModel,
       });
     }
 
@@ -139,7 +174,7 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    return res.status(200).json({ text });
+    return res.status(200).json({ text, model: usedModel });
   } catch (error: unknown) {
     console.error("AI Twin request failed:", error);
     const message = error instanceof Error ? error.message : "Unknown server error";
