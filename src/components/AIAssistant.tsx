@@ -28,6 +28,7 @@ export default function AIAssistant() {
   const [generating, setGenerating] = useState(false);
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [errorState, setErrorState] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState<'checking' | 'ready' | 'offline'>('checking');
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -38,6 +39,15 @@ export default function AIAssistant() {
   useEffect(() => {
     const timer = window.setTimeout(() => setHasNewMessage(true), 4500);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/assistant', { headers: { Accept: 'application/json' } })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        setServiceStatus(res.ok && data?.configured ? 'ready' : 'offline');
+      })
+      .catch(() => setServiceStatus('offline'));
   }, []);
 
   useEffect(() => {
@@ -78,6 +88,8 @@ export default function AIAssistant() {
       if (!res.ok) {
         throw new Error([data?.error, data?.detail].filter(Boolean).join(' — ') || `Request failed with status ${res.status}.`);
       }
+
+      setServiceStatus('ready');
 
       if (typeof data.text !== 'string' || !data.text.trim()) {
         throw new Error('The AI Twin returned an empty response.');
@@ -154,7 +166,9 @@ export default function AIAssistant() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white">Grok's AI Twin</h3>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">Digital portfolio representation · Online</p>
+                  <p className="text-[10px] text-zinc-500 mt-0.5">
+                    Digital portfolio representation · {serviceStatus === 'checking' ? 'Checking connection…' : serviceStatus === 'ready' ? 'Online' : 'Needs setup'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
