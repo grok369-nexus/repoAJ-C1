@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Layers, Terminal, Palette, Settings } from 'lucide-react';
 import { SKILLS_DATA } from '../data';
@@ -92,18 +92,27 @@ const getThemeColors = (categoryTitle: string): SkillTheme => {
 // Custom spring-physics Draggable Skill Chip
 function DraggableSkillChip({ name, proficiency, theme }: { name: string; proficiency: number; theme: SkillTheme; key?: string | number }) {
   const constraintsRef = useRef<HTMLDivElement>(null);
+  const [canDrag, setCanDrag] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia('(pointer: fine) and (min-width: 768px)');
+    const update = () => setCanDrag(media.matches);
+    update();
+    media.addEventListener?.('change', update);
+    return () => media.removeEventListener?.('change', update);
+  }, []);
 
   return (
     <div ref={constraintsRef} className="inline-block m-1 relative z-10">
       <motion.div
-        drag
-        dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-        dragElastic={0.65}
-        dragTransition={{ bounceStiffness: 400, bounceDamping: 15 }}
-        whileHover={{ scale: 1.04, boxShadow: `0 0 15px ${theme.shadow}` }}
-        whileDrag={{ scale: 1.1, cursor: "grabbing", zIndex: 30 }}
-        className={`px-3.5 py-2.5 rounded-xl border border-white/5 bg-[#131e35]/90 ${theme.hoverBorder} text-xs sm:text-sm font-semibold text-zinc-300 ${theme.hoverText} transition-all shadow-sm select-none min-w-[130px] sm:min-w-[145px]`}
-        data-cursor-drag
+        drag={canDrag}
+        dragConstraints={canDrag ? { left: 0, right: 0, top: 0, bottom: 0 } : undefined}
+        dragElastic={canDrag ? 0.55 : 0}
+        dragTransition={canDrag ? { bounceStiffness: 320, bounceDamping: 18 } : undefined}
+        whileHover={canDrag ? { scale: 1.03, boxShadow: `0 0 12px ${theme.shadow}` } : undefined}
+        whileDrag={canDrag ? { scale: 1.06, cursor: "grabbing", zIndex: 30 } : undefined}
+        className={`px-3 py-2.5 rounded-xl border border-white/5 bg-[#131e35]/90 ${theme.hoverBorder} text-xs sm:text-sm font-semibold text-zinc-300 ${theme.hoverText} transition-colors shadow-sm select-none min-w-[120px] sm:min-w-[145px]`}
+        data-cursor-drag={canDrag ? true : undefined}
       >
         <span className="flex flex-col gap-1.5 w-full">
           <span className="flex items-center justify-between gap-2">
@@ -182,7 +191,7 @@ export default function Skills() {
             transition={{ delay: 0.2 }}
             className="text-zinc-500 text-sm max-w-lg mt-2 font-normal leading-relaxed"
           >
-            Interactive technology cells mapping developer & UI/UX design expertise. Hover, grab, and toss any chip to experience real-time spring physics.
+            Interactive technology cells mapping developer & UI/UX design expertise. Drag chips on desktop; on phones the layout stays touch-friendly and lightweight.
           </motion.p>
         </div>
 
@@ -230,7 +239,7 @@ export default function Skills() {
           whileInView={{ opacity: 0.4 }}
           className="text-center mt-12 text-[10px] font-mono text-zinc-500 uppercase tracking-widest"
         >
-          Click and drag elements to experience layout physics
+          Drag elements on desktop to experience layout physics
         </motion.div>
       </div>
     </section>
