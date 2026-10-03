@@ -76,7 +76,7 @@ export default function AIAssistant() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data?.error || `Request failed with status ${res.status}.`);
+        throw new Error([data?.error, data?.detail].filter(Boolean).join(' — ') || `Request failed with status ${res.status}.`);
       }
 
       if (typeof data.text !== 'string' || !data.text.trim()) {
@@ -100,7 +100,7 @@ export default function AIAssistant() {
         {
           id: `${Date.now()}-error`,
           role: 'model',
-          text: 'I could not reach the AI service right now. Please check the deployment/API configuration and try again.',
+          text: `AI Twin error: ${err instanceof Error ? err.message : 'Unknown error'}`,
           timestamp: makeTimestamp(),
         },
       ]);
