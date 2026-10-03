@@ -95,3 +95,92 @@ button { touch-action: manipulation; }
 
 /* Selection feels more deliberate across the portfolio. */
 ::selection { background: color-mix(in srgb, var(--cyan-500) 35%, transparent); color: white; }
+
+
+/* Mobile performance + sizing pass
+   Keep the Liquid Glass look, but avoid expensive blur/paint work on small devices. */
+.ai-twin-panel {
+  contain: layout paint;
+}
+
+.ai-twin-messages {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.skill-progress-bar {
+  transform-origin: left center;
+}
+
+@media (max-width: 767px) {
+  html {
+    scroll-padding-top: 76px;
+  }
+
+  body {
+    overscroll-behavior-x: none;
+  }
+
+  .site-ambient {
+    display: none;
+  }
+
+  .site-shell::before {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,.012), transparent 18%, rgba(0,0,0,.08));
+  }
+
+  .site-shell header[class*="fixed"],
+  .site-shell nav[class*="fixed"] {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: color-mix(in srgb, var(--theme-bg, #070b19) 94%, transparent) !important;
+    box-shadow: 0 8px 28px rgba(0,0,0,.18);
+  }
+
+  .ai-twin-panel {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: color-mix(in srgb, var(--theme-bg, #080d18) 98%, black) !important;
+  }
+
+  .ai-twin-root {
+    max-width: calc(100vw - 1rem);
+  }
+
+  .ai-twin-root .shadow-2xl {
+    box-shadow: 0 16px 42px rgba(0,0,0,.42);
+  }
+
+  .shimmer-effect,
+  .animate-sparkle-1,
+  .animate-sparkle-2,
+  .animate-sparkle-3 {
+    display: none !important;
+  }
+
+  .site-shell section {
+    scroll-margin-top: 82px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ai-twin-panel {
+    border-radius: 20px;
+  }
+
+  .site-shell section {
+    scroll-margin-top: 76px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-shell *,
+  .site-shell *::before,
+  .site-shell *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
