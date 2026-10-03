@@ -135,14 +135,14 @@ button { touch-action: manipulation; }
   .site-shell nav[class*="fixed"] {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    background: color-mix(in srgb, var(--theme-bg, #070b19) 94%, transparent) !important;
+    background: rgba(7, 11, 25, 0.96) !important;
     box-shadow: 0 8px 28px rgba(0,0,0,.18);
   }
 
   .ai-twin-panel {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    background: color-mix(in srgb, var(--theme-bg, #080d18) 98%, black) !important;
+    background: #080d18 !important;
   }
 
   .ai-twin-root {
@@ -182,5 +182,58 @@ button { touch-action: manipulation; }
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
+  }
+}
+
+
+@media (max-width: 767px) {
+  .site-shell section {
+    padding-top: 4rem !important;
+    padding-bottom: 4rem !important;
+  }
+
+  .site-shell section#home {
+    min-height: 100svh;
+    padding-top: 7rem !important;
+    padding-bottom: 4rem !important;
+  }
+
+  .site-shell .max-w-7xl,
+  .site-shell .max-w-6xl,
+  .site-shell .max-w-5xl {
+    max-width: 100%;
+  }
+
+  .site-shell h1 {
+    overflow-wrap: anywhere;
+  }
+
+  .site-shell img {
+    max-width: 100%;
+  }
+
+  .site-shell [class*="blur-"] {
+    /* Large blur layers are a major paint cost on older Android GPUs. */
+    filter: none !important;
+  }
+
+  .site-shell .shadow-2xl,
+  .site-shell [class*="shadow-[0_0_"] {
+    box-shadow: 0 12px 32px rgba(0,0,0,.28) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .site-shell section {
+    padding-top: 3.25rem !important;
+    padding-bottom: 3.25rem !important;
+  }
+
+  .ai-twin-root {
+    right: .5rem;
+  }
+
+  .ai-twin-panel {
+    width: calc(100vw - 1rem) !important;
   }
 }
