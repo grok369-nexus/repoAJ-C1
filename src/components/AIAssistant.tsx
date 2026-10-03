@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowUpRight, BrainCircuit, MessageSquare, RotateCcw, Send, Sparkles, User, X } from 'lucide-react';
+import { BrainCircuit, RotateCcw, Send, Sparkles, User, X } from 'lucide-react';
 import { ChatMessage } from '../types';
 
 const quickPrompts = [
@@ -30,10 +30,13 @@ export default function AIAssistant() {
   const [errorState, setErrorState] = useState(false);
   const [serviceStatus, setServiceStatus] = useState<'checking' | 'ready' | 'offline'>('checking');
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const node = messagesRef.current;
+    if (!node) return;
+    node.scrollTop = node.scrollHeight;
   }, [messages, generating]);
 
   useEffect(() => {
@@ -42,16 +45,23 @@ export default function AIAssistant() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     fetch('/api/assistant', { headers: { Accept: 'application/json' } })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
-        setServiceStatus(res.ok && data?.configured ? 'ready' : 'offline');
+        if (!cancelled) setServiceStatus(res.ok && data?.configured ? 'ready' : 'offline');
       })
-      .catch(() => setServiceStatus('offline'));
+      .catch(() => {
+        if (!cancelled) setServiceStatus('offline');
+      });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (isOpen) window.setTimeout(() => inputRef.current?.focus(), 250);
+    if (isOpen) {
+      const timer = window.setTimeout(() => inputRef.current?.focus(), 120);
+      return () => window.clearTimeout(timer);
+    }
   }, [isOpen]);
 
   const handleSendMessage = async (textToSend: string) => {
@@ -128,17 +138,22 @@ export default function AIAssistant() {
   };
 
   return (
-    <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40 flex flex-col items-end">
+    <div className="ai-twin-root fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 sm:bottom-6 sm:right-6 z-40 flex flex-col items-end">
       <AnimatePresence>
         {!isOpen && (
-          <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.85, opacity: 0 }}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.18 }}
+          >
             <button
               onClick={() => { setIsOpen(true); setHasNewMessage(false); }}
-              className="group relative flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-400 via-sky-500 to-blue-600 text-white shadow-xl shadow-cyan-500/25 border border-white/20 hover:scale-105 transition-transform cursor-pointer"
+              className="group relative flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-400 via-sky-500 to-blue-600 text-white shadow-xl shadow-cyan-500/20 border border-white/20 active:scale-95 sm:hover:scale-105 transition-transform cursor-pointer"
               title="Open Grok's AI Twin"
               aria-label="Open Grok's AI Twin"
             >
-              <BrainCircuit className="w-6 h-6 group-hover:rotate-6 transition-transform" />
+              <BrainCircuit className="w-6 h-6" />
               <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#080d18]" />
               {hasNewMessage && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-cyan-300 animate-ping" />}
             </button>
@@ -149,60 +164,60 @@ export default function AIAssistant() {
       <AnimatePresence>
         {isOpen && (
           <motion.section
-            initial={{ opacity: 0, scale: 0.92, y: 35 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 35 }}
-            transition={{ type: 'spring', stiffness: 220, damping: 25 }}
-            className="w-[calc(100vw-2rem)] sm:w-[390px] h-[min(620px,calc(100vh-2rem))] rounded-3xl border border-white/10 bg-[#080d18]/95 backdrop-blur-2xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 18 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="ai-twin-panel w-[calc(100vw-1.5rem)] max-w-[420px] sm:w-[390px] h-[min(640px,78dvh)] sm:h-[min(620px,calc(100vh-2rem))] rounded-[24px] border border-white/10 bg-[#080d18]/95 shadow-2xl shadow-black/50 overflow-hidden flex flex-col"
             aria-label="Grok AI Twin chat"
           >
-            <div className="h-1 bg-gradient-to-r from-cyan-400 via-sky-500 to-violet-500" />
+            <div className="h-1 bg-gradient-to-r from-cyan-400 via-sky-500 to-violet-500 shrink-0" />
 
-            <header className="px-4 py-4 border-b border-white/8 bg-white/[0.025] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative w-10 h-10 rounded-2xl bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-cyan-300" />
+            <header className="px-3.5 py-3.5 sm:px-4 sm:py-4 border-b border-white/8 bg-white/[0.025] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-300" />
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#080d18]" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Grok's AI Twin</h3>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-white truncate">Grok's AI Twin</h3>
+                  <p className="text-[10px] text-zinc-500 mt-0.5 truncate">
                     Digital portfolio representation · {serviceStatus === 'checking' ? 'Checking connection…' : serviceStatus === 'ready' ? 'Online' : 'Needs setup'}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button onClick={resetChat} className="p-2 rounded-xl text-zinc-500 hover:text-white hover:bg-white/5 transition-colors" title="New conversation" aria-label="New conversation">
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button onClick={resetChat} className="p-2 rounded-xl text-zinc-500 hover:text-white hover:bg-white/5 active:bg-white/10 transition-colors" title="New conversation" aria-label="New conversation">
                   <RotateCcw className="w-4 h-4" />
                 </button>
-                <button onClick={() => setIsOpen(false)} className="p-2 rounded-xl text-zinc-500 hover:text-white hover:bg-white/5 transition-colors" title="Close" aria-label="Close">
+                <button onClick={() => setIsOpen(false)} className="p-2 rounded-xl text-zinc-500 hover:text-white hover:bg-white/5 active:bg-white/10 transition-colors" title="Close" aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </header>
 
-            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-zinc-800">
+            <div ref={messagesRef} className="ai-twin-messages flex-1 min-h-0 overflow-y-auto overscroll-contain px-3.5 sm:px-4 py-3.5 sm:py-4 space-y-3.5 scrollbar-thin">
               {messages.map((msg) => {
                 const isModel = msg.role === 'model';
                 return (
-                  <motion.div key={msg.id} initial={{ opacity: 0, y: 7 }} animate={{ opacity: 1, y: 0 }} className={`flex items-start gap-2.5 ${isModel ? '' : 'flex-row-reverse'}`}>
+                  <div key={msg.id} className={`flex items-start gap-2 ${isModel ? '' : 'flex-row-reverse'}`}>
                     <div className={`w-7 h-7 rounded-xl shrink-0 flex items-center justify-center border ${isModel ? 'bg-cyan-400/10 text-cyan-300 border-cyan-400/15' : 'bg-sky-500/10 text-sky-300 border-sky-500/15'}`}>
                       {isModel ? <BrainCircuit className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
                     </div>
-                    <div className={`max-w-[82%] px-3.5 py-3 rounded-2xl text-[12px] leading-relaxed ${isModel ? 'bg-white/[0.055] text-zinc-300 border border-white/[0.06] rounded-tl-sm' : 'bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-tr-sm'}`}>
-                      <p className="whitespace-pre-wrap">{msg.text}</p>
+                    <div className={`max-w-[84%] px-3 py-2.5 rounded-2xl text-[12px] leading-relaxed ${isModel ? 'bg-white/[0.055] text-zinc-300 border border-white/[0.06] rounded-tl-sm' : 'bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-tr-sm'}`}>
+                      <p className="whitespace-pre-wrap break-words">{msg.text}</p>
                       <span className="block text-[8px] opacity-40 mt-1.5 text-right">{msg.timestamp}</span>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
 
               {generating && (
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-xl bg-cyan-400/10 text-cyan-300 border border-cyan-400/15 flex items-center justify-center">
                     <BrainCircuit className="w-3.5 h-3.5 animate-pulse" />
                   </div>
-                  <div className="px-3.5 py-3 rounded-2xl rounded-tl-sm bg-white/[0.055] border border-white/[0.06] flex items-center gap-1.5">
+                  <div className="px-3 py-2.5 rounded-2xl rounded-tl-sm bg-white/[0.055] border border-white/[0.06] flex items-center gap-1.5">
                     <span className="text-[10px] text-zinc-500 mr-1">Thinking</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-bounce" />
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-bounce [animation-delay:120ms]" />
@@ -213,30 +228,36 @@ export default function AIAssistant() {
               <div ref={endOfMessagesRef} />
             </div>
 
-            <div className="px-4 py-2.5 border-t border-white/8 bg-white/[0.02]">
-              <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+            <div className="px-3.5 sm:px-4 py-2.5 border-t border-white/8 bg-white/[0.02] shrink-0">
+              <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-0.5 overscroll-contain">
                 {quickPrompts.map((item) => (
-                  <button key={item.label} onClick={() => handleSendMessage(item.prompt)} disabled={generating} className="shrink-0 px-3 py-1.5 rounded-xl border border-white/8 bg-white/[0.035] hover:bg-cyan-400/10 hover:border-cyan-400/20 text-[10px] text-zinc-400 hover:text-cyan-200 transition-colors disabled:opacity-40 cursor-pointer">
+                  <button key={item.label} onClick={() => handleSendMessage(item.prompt)} disabled={generating} className="shrink-0 px-3 py-1.5 rounded-xl border border-white/8 bg-white/[0.035] active:bg-cyan-400/10 sm:hover:bg-cyan-400/10 text-[10px] text-zinc-400 sm:hover:text-cyan-200 transition-colors disabled:opacity-40 cursor-pointer">
                     {item.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {errorState && <div className="px-4 py-1.5 text-[9px] text-amber-300/80 bg-amber-400/5 border-t border-amber-400/10">The last request failed. You can try sending it again.</div>}
+            {errorState && (
+              <div className="px-3.5 py-1.5 text-[9px] text-amber-300/80 bg-amber-400/5 border-t border-amber-400/10 shrink-0">
+                The last request failed. You can try sending it again.
+              </div>
+            )}
 
-            <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputText); }} className="p-3.5 border-t border-white/8 bg-[#070b14] flex gap-2">
+            <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputText); }} className="p-3 sm:p-3.5 border-t border-white/8 bg-[#070b14] flex gap-2 shrink-0">
               <input
                 ref={inputRef}
                 type="text"
+                inputMode="text"
+                autoComplete="off"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 disabled={generating}
                 placeholder="Ask the AI Twin anything..."
-                className="min-w-0 flex-1 px-3.5 py-3 rounded-2xl bg-white/[0.045] border border-white/8 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-cyan-400/40 focus:bg-white/[0.06] transition-all disabled:opacity-50"
+                className="min-w-0 flex-1 px-3.5 py-3 rounded-2xl bg-white/[0.045] border border-white/8 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-cyan-400/40 focus:bg-white/[0.06] transition-colors disabled:opacity-50"
                 maxLength={3000}
               />
-              <button type="submit" disabled={!inputText.trim() || generating} className="w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 text-white flex items-center justify-center disabled:opacity-30 hover:scale-105 transition-transform cursor-pointer" title="Send message" aria-label="Send message">
+              <button type="submit" disabled={!inputText.trim() || generating} className="w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 text-white flex items-center justify-center disabled:opacity-30 sm:hover:scale-105 active:scale-95 transition-transform cursor-pointer" title="Send message" aria-label="Send message">
                 <Send className="w-4 h-4" />
               </button>
             </form>
