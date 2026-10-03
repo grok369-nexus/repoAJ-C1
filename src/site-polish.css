@@ -237,3 +237,95 @@ button { touch-action: manipulation; }
     width: calc(100vw - 1rem) !important;
   }
 }
+
+
+/* Hard mobile width guardrails
+   Prevent any child component from forcing the document wider than the phone viewport. */
+#root,
+.site-shell,
+.site-shell > main,
+.site-shell > footer {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  html,
+  body,
+  #root,
+  .site-shell {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  .site-shell main,
+  .site-shell section,
+  .site-shell footer {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  .site-shell section > div,
+  .site-shell article,
+  .site-shell form,
+  .site-shell .grid,
+  .site-shell .flex {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .site-shell [class*="w-screen"],
+  .site-shell [class*="min-w-"] {
+    max-width: 100% !important;
+  }
+
+  .site-shell .container {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .site-shell section > div[class*="mx-auto"] {
+    width: min(100%, 100%);
+  }
+
+  /* Keep horizontal padding inside the viewport instead of adding to it. */
+  .site-shell section,
+  .site-shell footer {
+    box-sizing: border-box;
+    padding-left: max(1rem, env(safe-area-inset-left)) !important;
+    padding-right: max(1rem, env(safe-area-inset-right)) !important;
+  }
+
+  .site-shell section > div[class*="mx-auto"] {
+    box-sizing: border-box;
+  }
+
+  .site-shell h1,
+  .site-shell h2,
+  .site-shell h3,
+  .site-shell p,
+  .site-shell a,
+  .site-shell button {
+    max-width: 100%;
+  }
+
+  .site-shell img,
+  .site-shell svg,
+  .site-shell video,
+  .site-shell canvas {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .site-shell section,
+  .site-shell footer {
+    padding-left: .75rem !important;
+    padding-right: .75rem !important;
+  }
+}
