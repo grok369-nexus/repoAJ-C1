@@ -127,13 +127,9 @@ function DraggableSkillChip({ name, proficiency, theme }: { name: string; profic
           
           {/* Custom micro-progress bar */}
           <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden relative">
-            <motion.div
-              initial={{ width: 0 }}
-              whileInView={{ width: `${proficiency}%` }}
-              viewport={{ once: true }}
-              transition={{ duration: 1, ease: "easeOut", delay: 0.15 }}
-              className={`h-full rounded-full bg-gradient-to-r ${theme.bar}`}
-              style={{ boxShadow: `0 0 4px ${theme.shadow}` }}
+            <div
+              className={`h-full rounded-full bg-gradient-to-r ${theme.bar} skill-progress-bar`}
+              style={{ width: `${proficiency}%`, boxShadow: `0 0 4px ${theme.shadow}` }}
             />
           </div>
         </span>
