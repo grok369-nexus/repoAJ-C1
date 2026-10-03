@@ -100,11 +100,12 @@ Accuracy rules:
     });
 
     const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      model: process.env.GEMINI_MODEL || "gemini-3.7-flash",
       contents: contents,
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.2,
+        // Gemini 3 models use their own reasoning controls; keep generation
+        // configuration minimal for compatibility across current models.
       },
     });
 
