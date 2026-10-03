@@ -1,5 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
-
 const twinKnowledge = `
 You are Grok's AI Twin, the interactive digital representation of the developer behind this portfolio.
 
@@ -27,9 +25,21 @@ BEHAVIOR:
 
 type ChatItem = { role?: string; text?: string };
 
+const getModel = () => process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const getApiKey = () => process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+
 export default async function handler(req: any, res: any) {
+  if (req.method === "GET") {
+    return res.status(200).json({
+      ok: true,
+      configured: Boolean(getApiKey()),
+      model: getModel(),
+      provider: "Google Gemini",
+    });
+  }
+
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "Method not allowed." });
   }
 
@@ -37,18 +47,19 @@ export default async function handler(req: any, res: any) {
     const { message, history } = req.body ?? {};
 
     if (typeof message !== "string" || !message.trim()) {
-      return res.status(400).json({ error: "Message is required." });
+      return res.status(400).json({ error: "Message is required.", code: "INVALID_MESSAGE" });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const apiKey = getApiKey();
     if (!apiKey) {
       console.error("AI Twin: GEMINI_API_KEY/GOOGLE_API_KEY is missing.");
       return res.status(503).json({
-        error: "AI Twin is not configured on the server. Add GEMINI_API_KEY to the Vercel project's Environment Variables and redeploy."
+        error: "AI Twin is not configured on the server.",
+        detail: "Add GEMINI_API_KEY to the Vercel project's Environment Variables and redeploy.",
+        code: "MISSING_API_KEY",
       });
     }
 
-    const ai = new GoogleGenAI({ apiKey });
     const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
 
     if (Array.isArray(history)) {
@@ -66,29 +77,71 @@ export default async function handler(req: any, res: any) {
       parts: [{ text: message.trim().slice(0, 3000) }],
     });
 
-    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-    const response = await ai.models.generateContent({
-      model,
-      contents,
-      config: {
-        systemInstruction: twinKnowledge,
-        temperature: 0.35,
-        maxOutputTokens: 700,
+    const model = getModel();
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
       },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: twinKnowledge }],
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.35,
+          maxOutputTokens: 700,
+        },
+      }),
+      signal: AbortSignal.timeout(25000),
     });
 
-    const text = response.text?.trim();
+    const providerData = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const providerMessage =
+        providerData?.error?.message ||
+        providerData?.error?.status ||
+        `Gemini returned HTTP ${response.status}.`;
+
+      console.error("AI Twin Gemini error:", response.status, providerMessage);
+
+      return res.status(502).json({
+        error: "Gemini could not process the AI Twin request.",
+        detail: providerMessage,
+        code: `GEMINI_HTTP_${response.status}`,
+      });
+    }
+
+    const text = providerData?.candidates?.[0]?.content?.parts
+      ?.map((part: any) => (typeof part?.text === "string" ? part.text : ""))
+      .join("")
+      .trim();
+
     if (!text) {
-      return res.status(502).json({ error: "Gemini returned an empty response. Please try again." });
+      const finishReason = providerData?.candidates?.[0]?.finishReason;
+      return res.status(502).json({
+        error: "Gemini returned an empty response.",
+        detail: finishReason ? `Finish reason: ${finishReason}` : "No text candidate was returned.",
+        code: "EMPTY_GEMINI_RESPONSE",
+      });
     }
 
     return res.status(200).json({ text });
   } catch (error: unknown) {
     console.error("AI Twin request failed:", error);
-    const message = error instanceof Error ? error.message : "Unknown Gemini error";
+    const message = error instanceof Error ? error.message : "Unknown server error";
+    const isTimeout = /timeout|timed out|aborted/i.test(message);
+
     return res.status(502).json({
-      error: "The AI Twin could not respond right now. Please try again in a moment.",
-      ...(process.env.NODE_ENV === "development" ? { debug: message } : {}),
+      error: isTimeout
+        ? "The AI Twin request timed out."
+        : "The AI Twin could not respond right now.",
+      detail: message,
+      code: isTimeout ? "GEMINI_TIMEOUT" : "AI_TWIN_SERVER_ERROR",
     });
   }
 }
