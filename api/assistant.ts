@@ -25,7 +25,16 @@ BEHAVIOR:
 
 type ChatItem = { role?: string; text?: string };
 
-const getModel = () => process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const getModel = () => {
+  const configured = (process.env.GEMINI_MODEL || "").trim();
+  // Gemini reports that 2.5 Flash is no longer available to new users.
+  // Automatically migrate that legacy setting so an old Vercel env var
+  // cannot keep the AI Twin broken after deployment.
+  if (!configured || configured === "gemini-2.5-flash" || configured === "models/gemini-2.5-flash") {
+    return "gemini-3.8-flash";
+  }
+  return configured.replace(/^models\//, "");
+};
 const getApiKey = () => process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
 export default async function handler(req: any, res: any) {
