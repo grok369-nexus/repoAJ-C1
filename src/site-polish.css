@@ -329,3 +329,138 @@ button { touch-action: manipulation; }
     padding-right: .75rem !important;
   }
 }
+
+
+/* Final phone-scale pass: compact typography, spacing and touch targets */
+@media (max-width: 767px) {
+  .site-shell section {
+    padding-top: 3.5rem !important;
+    padding-bottom: 3.5rem !important;
+  }
+
+  .site-shell section#home {
+    min-height: 100svh;
+    padding-top: 6.25rem !important;
+    padding-bottom: 3rem !important;
+  }
+
+  .site-shell section > .max-w-7xl,
+  .site-shell section > .max-w-6xl,
+  .site-shell section > .max-w-5xl {
+    padding-left: .875rem !important;
+    padding-right: .875rem !important;
+  }
+
+  .site-shell h1 {
+    font-size: clamp(2.25rem, 11vw, 3.5rem) !important;
+    line-height: .98 !important;
+    letter-spacing: -.045em !important;
+  }
+
+  .site-shell h2 {
+    font-size: clamp(1.7rem, 7.5vw, 2.35rem) !important;
+    line-height: 1.05 !important;
+    letter-spacing: -.035em !important;
+  }
+
+  .site-shell h3 {
+    line-height: 1.15 !important;
+  }
+
+  .site-shell p {
+    max-width: 100%;
+  }
+
+  .site-shell .grid {
+    gap: 1rem !important;
+  }
+
+  .site-shell article {
+    border-radius: 1rem !important;
+  }
+
+  .site-shell article > div[class*="p-6"],
+  .site-shell article > div[class*="p-8"] {
+    padding: 1rem !important;
+  }
+
+  .site-shell input,
+  .site-shell textarea,
+  .site-shell select {
+    font-size: 16px !important;
+  }
+
+  .site-shell button {
+    min-height: 42px;
+  }
+
+  .site-shell .text-5xl {
+    font-size: 2.15rem !important;
+  }
+
+  .site-shell .text-4xl {
+    font-size: 1.9rem !important;
+  }
+
+  .site-shell .text-3xl {
+    font-size: 1.7rem !important;
+  }
+
+  .site-shell .text-xl {
+    font-size: 1.05rem !important;
+  }
+
+  .site-shell .text-lg {
+    font-size: 1rem !important;
+  }
+
+  .site-shell .text-base {
+    font-size: .9375rem !important;
+  }
+
+  .site-shell .tracking-widest {
+    letter-spacing: .12em;
+  }
+
+  .site-shell [class*="w-[35rem]"],
+  .site-shell [class*="w-[40rem]"],
+  .site-shell [class*="w-[30rem]"],
+  .site-shell [class*="w-[25rem]"] {
+    width: 18rem !important;
+    height: 18rem !important;
+  }
+
+  .site-shell .shadow-lg,
+  .site-shell .shadow-xl,
+  .site-shell .shadow-2xl {
+    --tw-shadow: 0 10px 28px rgba(0,0,0,.24) !important;
+    box-shadow: 0 10px 28px rgba(0,0,0,.24) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .site-shell section {
+    padding-top: 3rem !important;
+    padding-bottom: 3rem !important;
+  }
+
+  .site-shell section#home {
+    padding-top: 5.75rem !important;
+  }
+
+  .site-shell h1 {
+    font-size: clamp(2rem, 10.5vw, 2.8rem) !important;
+  }
+
+  .site-shell h2 {
+    font-size: 1.6rem !important;
+  }
+
+  .site-shell .text-5xl {
+    font-size: 2rem !important;
+  }
+
+  .site-shell .text-3xl {
+    font-size: 1.55rem !important;
+  }
+}
